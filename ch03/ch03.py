@@ -224,4 +224,189 @@ plt.xscale('log')
 plt.show()
 
 
+# %% SVM
+from sklearn.svm import SVC
+svm = SVC(kernel='linear', C=1.0, random_state=1)
+svm.fit(X_train_std, y_train)
+plot_decision_regions(X_combined_std, y_combined, classifier=svm,
+                        test_idx=range(105,150))
+
+plt.xlabel('petal length [standardized]')
+plt.ylabel('petal width [standardized]')
+plt.legend(loc='upper left')
+plt.tight_layout()
+plt.show()
+
+
+# %%
+from sklearn.linear_model import SGDClassifier
+# 確率的勾配降下法バージョンのパーセプトロンを生成
+ppn = SGDClassifier(loss='perceptron')
+# 確率的勾配降下法バージョンのロジスティクス回帰を生成
+lr = SGDClassifier(loss='log')
+# 確率的勾配降下法バージョンのSVM(損失関数=ヒンジ関数)を生成
+svm = SGDClassifier(loss='hinge')
+
+# %% kernel SVM
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+np.random.seed(1)
+# 標準正規分布に従う乱数で200行2列の行列を生成
+X_xor = np.random.randn(200, 2)
+# 2つの引数に対して排他的論理和を実行
+y_xor = np.logical_xor(X_xor[:, 0] > 0, X_xor[:, 1] > 0)
+# 排他的論理和の値が真の場合は1,偽の場合は-1を割り当てる
+y_xor = np.where(y_xor, 1, -1)
+
+plt.scatter(X_xor[y_xor==1, 0], X_xor[y_xor==1, 1],
+            c='b', marker='x', label='1')
+
+plt.scatter(X_xor[y_xor==-1, 0], X_xor[y_xor==-1, 1],
+            c='r', marker='s', label='-1')
+
+plt.xlim([-3, 3])
+plt.ylim([-3, 3])
+plt.legend(loc='best')
+plt.tight_layout()
+plt.show()
+
+
+# %% using the kernel trick to find separationg hyperplanes in higher dimensional space
+# RBFカーネルによるSVMインスタンスを生成
+svm = SVC(kernel='rbf', random_state=1, gamma=0.1, C=10.0)
+svm.fit(X_xor, y_xor)
+plot_decision_regions(X_xor, y_xor, classifier=svm)
+
+plt.legend(loc='upper left')
+plt.tight_layout()
+plt.show()
+
+# %% γ=0.2のとき
+svm = SVC(kernel='rbf', random_state=1, gamma=0.2, C=1.0)
+svm.fit(X_train_std, y_train)
+plot_decision_regions(X_combined_std, y_combined, classifier=svm,
+                        test_idx=range(105,150))
+
+plt.xlabel('petal length [standardized]')
+plt.ylabel('petal width [standardized]')
+plt.legend(loc='upper left')
+plt.tight_layout()
+plt.show()
+
+# %% γ=100のとき
+svm = SVC(kernel='rbf', random_state=1, gamma=100, C=1.0)
+svm.fit(X_train_std, y_train)
+plot_decision_regions(X_combined_std, y_combined, classifier=svm,
+                        test_idx=range(105,150))
+
+plt.xlabel('petal length [standardized]')
+plt.ylabel('petal width [standardized]')
+plt.legend(loc='upper left')
+plt.tight_layout()
+plt.show()
+
+
+# %% 不純度の指標をプロット
+import matplotlib.pyplot as plt
+import numpy as np
+
+# ジニ不純度の関数を定義
+def gini(p):
+    return (p)*(1- (p)) + (1 - p)*(1 - (1 -p))
+
+# エントロピーの関数を定義
+def entropy(p):
+    return - p*np.log2(p) - (1 - p) * np.log2((1 - p))
+
+# 分類誤差の関数を定義
+def error(p):
+    return 1 - np.max([p, 1-p])
+
+# 確率を表す配列を生成
+x = np.arange(0.0, 1.0, 0.01)
+# 配列の値をもとにエントロピー、分類誤差を計算
+ent = [entropy(p) if p != 0 else None for p in x]
+sc_ent = [e*0.5 if e else None for e in ent]
+err = [error(i) for i in x]
+
+fig = plt.figure()
+ax = plt.subplot(111)
+
+# エントロピー2種、ジニ不純度、分類誤差のそれぞれをループ処理
+for i, lab, ls, c in zip([ent, sc_ent, gini(x), err],
+                        ['Entropy', 'Entropy(scaled)', 'Gini Impurity', 'Misclassification Err'],
+                        ['-', '-', '--', '-.'],
+                        ['black', 'lightgray', 'red', 'green', 'cyan']):
+    line = ax.plot(x, i, label=lab, linestyle=ls, lw=2, color=c)
+
+ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15),
+            ncol=5, fancybox=True, shadow=False)
+ax.axhline(y=0.5, linewidth=1, color='k', linestyle='--')
+ax.axhline(y=1, linewidth=1, color='k', linestyle='--')
+
+plt.ylim([0, 1.1])
+plt.ylabel('p(i=1)')
+plt.xlabel('Impurity Index')
+plt.show()
+
+# %% 決定木の構築
+from sklearn.tree import DecisionTreeClassifier
+# ジニ不純度を指標とする決定木のインスタンスを生成
+tree = DecisionTreeClassifier(criterion='gini', max_depth=4, random_state=1)
+tree.fit(X_train, y_train)
+X_combined = np.vstack((X_train, X_test))
+y_combined = np.hstack((y_train, y_test))
+plot_decision_regions(X_combined, y_combined, classifier=tree,
+                        test_idx=range(105, 150))
+plt.xlabel('petal length [cm]')
+plt.ylabel('petal width [cm]')
+plt.legend(loc='upper left')
+plt.tight_layout()
+plt.show()
+
+# %% 決定木の可視化
+from pydotplus import graph_from_dot_data
+from sklearn.tree import export_graphviz
+dot_data = export_graphviz(tree, 
+                            filled=True,
+                            rounded=True,
+                            class_names=['Setosa','Versicolor','Virginica'],
+                            feature_names=['petal length','petal width'],
+                            out_file=None)
+graph = graph_from_dot_data(dot_data)
+graph.write_png('tree.png')
+
+# %%
+from IPython.display import Image
+Image(filename='tree.png', width=600)
+
+# %% Random Forest
+from sklearn.ensemble import RandomForestClassifier
+# n_estimatorsは木の個数?
+# n_jobsは並列化のためのparams?
+forest = RandomForestClassifier(criterion='gini',
+                                n_estimators=25, random_state=1, n_jobs=2)
+forest.fit(X_train, y_train)
+plot_decision_regions(X_combined, y_combined, classifier=forest,
+                        test_idx=range(105, 150))
+plt.xlabel('petal length [cm]')
+plt.ylabel('petal width [cm]')
+plt.legend(loc='upper left')
+plt.tight_layout()
+plt.show()
+
+# %%
+from sklearn.neighbors import KNeighborsClassifier
+knn = KNeighborsClassifier(n_neighbors=5, p=2, metric='minkowski')
+knn.fit(X_train, y_train)
+plot_decision_regions(X_combined, y_combined, classifier=knn,
+                        test_idx=range(105, 150))
+plt.xlabel('petal length [cm]')
+plt.ylabel('petal width [cm]')
+plt.legend(loc='upper left')
+plt.tight_layout()
+plt.show()
+
 # %%
